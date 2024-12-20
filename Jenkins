@@ -1,1 +1,60 @@
-config
+pipeline {
+    agent any
+    
+    environment {
+        DOCKER_IMAGE = 'mohammedloussal/itsurvey:latest'  
+        DOCKER_CREDENTIALS = credentials('docker-hub-creds')  
+    }
+
+    stages {
+        stage('Clone Repository') {
+            steps {
+                git 'https://github.com/LoussalMohammed/Jenkins_Deployment_LoussalMohammed'
+            }
+        }
+
+        stage('Build Spring Boot') {
+            steps {
+                script {
+                    sh 'mvn clean package'
+                }
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    sh "docker build -t ${DOCKER_IMAGE} ."
+                }
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                script {
+                    withCredentials([usernamePassword(credentialsId: 'docker-hub-creds', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                        sh "echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin"
+                    }
+
+                    // Push the image to Docker Hub
+                    sh "docker push ${DOCKER_IMAGE}"
+                }
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                echo 'Deploying application'
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Pipeline succeeded!'
+        }
+        failure {
+            echo 'Pipeline failed!'
+        }
+    }
+}
